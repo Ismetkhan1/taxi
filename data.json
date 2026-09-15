@@ -1,0 +1,109 @@
+{
+  "users": [
+    {
+      "id": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "name": "исметхан",
+      "phone": "77750406273",
+      "role": "passenger",
+      "createdAt": "2026-09-14T12:06:24.607Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "6b480bd6-c514-49c1-947b-eb2127d24ec0",
+      "passengerId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "from": "Усть-Каменогорск",
+      "to": "Урыль, Катон-Карагай",
+      "seats": 1,
+      "when": "Сегодня, сейчас",
+      "stop": null,
+      "price": 10000,
+      "status": "accepted",
+      "createdAt": "2026-09-14T12:21:19.596Z",
+      "driverId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "acceptedAt": "2026-09-14T12:22:51.299Z"
+    },
+    {
+      "id": "d46303a8-8bc6-419b-b1bd-ba7899d4ae9a",
+      "passengerId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "from": "Усть-Каменогорск",
+      "to": "Урыль, Катон-Карагай",
+      "seats": 1,
+      "when": "Сегодня, сейчас",
+      "stop": null,
+      "price": 10000,
+      "status": "accepted",
+      "createdAt": "2026-09-14T12:22:17.130Z",
+      "driverId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "acceptedAt": "2026-09-14T12:22:50.161Z"
+    },
+    {
+      "id": "92bdcf84-78c7-44ae-aa35-f868c174d235",
+      "passengerId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "from": "Усть-Каменогорск",
+      "to": "Урыль, Катон-Карагай",
+      "seats": 1,
+      "when": "Сегодня, сейчас",
+      "stop": null,
+      "price": 4500,
+      "status": "accepted",
+      "createdAt": "2026-09-14T12:22:22.018Z",
+      "driverId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "acceptedAt": "2026-09-14T12:22:49.225Z"
+    },
+    {
+      "id": "c3975202-3ed3-4e77-87f5-62bbc193895a",
+      "passengerId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "from": "Усть-Каменогорск",
+      "to": "Урыль, Катон-Карагай",
+      "seats": 1,
+      "when": "Сегодня, сейчас",
+      "stop": null,
+      "price": 10000,
+      "status": "accepted",
+      "createdAt": "2026-09-14T12:22:27.301Z",
+      "driverId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "acceptedAt": "2026-09-14T12:22:45.249Z"
+    },
+    {
+      "id": "b04cdc9e-6227-4fd9-8cb8-fb901f135c45",
+      "passengerId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "from": "Усть-Каменогорск",
+      "to": "Урыль, Катон-Карагай",
+      "seats": 1,
+      "when": "Сегодня, сейчас",
+      "stop": null,
+      "price": 10000,
+      "status": "accepted",
+      "createdAt": "2026-09-14T12:23:24.063Z",
+      "driverId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "acceptedAt": "2026-09-14T12:40:43.604Z"
+    },
+    {
+      "id": "7950b424-efdb-46ed-8dd5-b296ce9bdfb5",
+      "passengerId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "from": "Усть-Каменогорск",
+      "to": "село Урыль, Катон-Карагай",
+      "seats": 1,
+      "when": "Сегодня, сейчас",
+      "stop": null,
+      "price": 4500,
+      "status": "open",
+      "createdAt": "2026-09-14T12:44:55.726Z"
+    },
+    {
+      "id": "171fdde0-c9fd-48ca-b7d6-ddfc3b6e7111",
+      "passengerId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "from": "Усть-Каменогорск",
+      "to": "Улькен Нарын",
+      "seats": 1,
+      "when": "Сегодня, сейчас",
+      "stop": "Улькен Нарын",
+      "price": 4500,
+      "status": "accepted",
+      "createdAt": "2026-09-14T12:45:20.889Z",
+      "driverId": "306abd47-31f7-49a1-b91c-f0556d88840e",
+      "acceptedAt": "2026-09-14T12:45:36.340Z"
+    }
+  ]
+}
