@@ -1,0 +1,247 @@
+﻿<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#111827" />
+    <title>JOL — Такси для Восточного Казахстана</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="phone-shell">
+      <div class="app">
+        <header class="topbar">
+          <button class="profile-button" aria-label="Открыть профиль">А</button>
+          <div class="brand"><span class="brand-mark">J</span>JOL</div>
+          <button id="roleToggle" class="role-toggle" type="button">Водитель</button>
+        </header>
+
+        <div id="authOverlay" class="auth-overlay">
+          <form id="authForm" class="auth-card">
+            <div class="auth-logo"><span>J</span>JOL</div>
+            <h1>Добро пожаловать</h1>
+            <p>Пассажиры и водители в одном приложении</p>
+
+            <label>
+              Имя
+              <input id="authName" name="name" type="text" placeholder="Ваше имя" required />
+            </label>
+
+            <label>
+              Телефон
+              <input id="authPhone" type="tel" placeholder="+7 (777) 000-00-00" required />
+            </label>
+
+            <fieldset>
+              <legend>Роль</legend>
+              <label class="auth-role">
+                <input type="radio" name="authRole" value="passenger" checked />
+                Пассажир
+              </label>
+              <label class="auth-role">
+                <input type="radio" name="authRole" value="driver" />
+                Водитель
+              </label>
+            </fieldset>
+
+            <button class="primary-button" type="submit">Войти</button>
+            <small>Безопасно • быстро • удобно</small>
+          </form>
+        </div>
+
+        <section id="passengerScreen" class="screen active">
+          <div class="hero-panel">
+            <p class="eyebrow">ЛЕГКИЕ ПОЕЗДКИ</p>
+            <h1>Куда поедем сегодня?</h1>
+            <div class="hero-meta">
+              <span>24/7</span>
+              <span>Проверенные водители</span>
+            </div>
+          </div>
+
+          <form id="orderForm" class="order-card">
+            <label class="place-field">
+              <span class="pin pickup"></span>
+              <span>
+                <small>ОТКУДА</small>
+                <input id="from" value="Усть-Каменогорск" aria-label="Откуда" />
+              </span>
+            </label>
+
+            <span class="route-line"></span>
+
+            <label class="place-field">
+              <span class="pin destination"></span>
+              <span>
+                <small>КУДА</small>
+                <input id="to" value="село Урыль, Катон-Карагай" aria-label="Куда" />
+              </span>
+            </label>
+
+            <div class="form-row">
+              <label>
+                <small>КОГДА</small>
+                <select id="when">
+                  <option>Сегодня, сейчас</option>
+                  <option>Завтра утром</option>
+                  <option>Выбрать дату</option>
+                </select>
+              </label>
+
+              <label>
+                <small>МЕСТА</small>
+                <select id="seats">
+                  <option value="1">1 место</option>
+                  <option value="2">2 места</option>
+                  <option value="3">3 места</option>
+                  <option value="4">4 места</option>
+                </select>
+              </label>
+            </div>
+
+            <div id="datePickerWrap" class="date-picker hidden">
+              <small>Дата поездки</small>
+              <input id="rideDate" type="date" />
+            </div>
+
+            <label class="passenger-price">
+              <small>ВАША ЦЕНА</small>
+              <input id="passengerPrice" type="number" min="500" value="4500" />
+            </label>
+
+            <div class="action-row">
+              <button class="primary-button" type="submit">Найти поездку</button>
+              <button id="showStops" class="secondary-button" type="button">Выбрать остановку</button>
+            </div>
+
+            <div class="route-stop-picker">
+              <div class="section-label">Популярные остановки</div>
+              <div id="passengerStops" class="chip-group"></div>
+            </div>
+          </form>
+
+          <div class="route-summary">
+            <div>
+              <span>≈ 460 км</span>
+              <span>7–8 часов</span>
+            </div>
+            <p>Дальняя поездка · можно взять багаж</p>
+          </div>
+
+          <section class="benefits">
+            <article>
+              <span>🛡</span>
+              <div>
+                <b>Проверенные водители</b>
+                <p>Документы и рейтинг проверены</p>
+              </div>
+            </article>
+            <article>
+              <span>♻</span>
+              <div>
+                <b>Попутные поездки</b>
+                <p>Делите дорогу и стоимость</p>
+              </div>
+            </article>
+          </section>
+        </section>
+
+        <section id="driverScreen" class="screen">
+          <div class="driver-hero">
+            <div>
+              <p class="eyebrow">ВЫ В СЕТИ</p>
+              <h2 id="driverName">Добрый день!</h2>
+            </div>
+            <button id="onlineToggle" class="online-switch" type="button"><i></i><span>На линии</span></button>
+          </div>
+
+          <div class="earnings-card">
+            <div>
+              <small>ЗАРАБОТОК СЕГОДНЯ</small>
+              <strong>0 ₸</strong>
+            </div>
+            <span>→</span>
+          </div>
+
+          <div class="section-head">
+            <h3>Заказы рядом</h3>
+            <span id="ordersCount">Нет заказов</span>
+          </div>
+
+          <article id="availableOrder" class="ride-card hidden" data-order-id="">
+            <div class="ride-card-top">
+              <span class="time-badge">СЕЙЧАС</span>
+              <strong id="ridePrice">35 000 ₸</strong>
+            </div>
+
+            <div class="ride-route">
+              <span class="pin pickup"></span>
+              <div>
+                <small>ОТКУДА</small>
+                <b id="rideFrom">Усть-Каменогорск</b>
+              </div>
+            </div>
+
+            <div class="ride-route">
+              <span class="pin destination"></span>
+              <div>
+                <small>КУДА</small>
+                <b id="rideTo">село Урыль, Катон-Карагай</b>
+              </div>
+            </div>
+
+            <div class="ride-meta">
+              <span>👤 <span id="rideSeats">1</span> пассажир</span>
+              <span>🧳 Багаж</span>
+              <span>≈ 460 км</span>
+            </div>
+
+            <label class="driver-price">
+              <small>Ваша цена</small>
+              <input id="driverPrice" type="number" min="500" value="35000" />
+            </label>
+
+            <button id="acceptOrder" class="primary-button" type="button">Принять заказ</button>
+          </article>
+
+          <div id="emptyOrders" class="empty-orders">Новых заказов пока нет. Мы сообщим, когда появится пассажир.</div>
+
+          <div class="detour-panel">
+            <div class="section-head">
+              <h3>Маршрут водителя</h3>
+              <span id="detourCount">Без заездов</span>
+            </div>
+            <div id="driverStops" class="chip-group"></div>
+          </div>
+        </section>
+
+        <nav class="bottom-nav">
+          <button class="nav-item active" data-tab="home" type="button"><span>⌂</span>Главная</button>
+          <button class="nav-item" data-tab="rides" type="button"><span>▣</span>Поездки</button>
+          <button class="nav-item" data-tab="messages" type="button"><span>◌</span>Сообщения</button>
+          <button class="nav-item" data-tab="profile" type="button"><span>◉</span>Профиль</button>
+        </nav>
+      </div>
+    </main>
+
+    <div id="toast" class="toast" role="status"></div>
+
+    <div id="locationMenu" class="hidden" role="listbox" aria-label="Выбор города"></div>
+
+    <div id="offerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-card">
+        <button id="closeModal" class="close" type="button" aria-label="Закрыть">×</button>
+        <div class="success-icon">✓</div>
+        <p class="eyebrow">ЗАКАЗ СОЗДАН</p>
+        <h2 id="modalTitle">Водители уже получают ваш заказ</h2>
+        <p id="modalMessage">Средняя цена по этому маршруту — <b>35 000 ₸</b>. Мы пришлём предложение, как только водитель откликнется.</p>
+        <button id="doneButton" class="primary-button" type="button">Понятно</button>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

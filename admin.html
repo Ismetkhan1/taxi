@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JOL — Админ-панель</title>
+  <style>
+    body{margin:0;padding:24px;font-family:system-ui,sans-serif;background:#eef3f8;color:#142033}main{max-width:1000px;margin:auto}header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card,.panel{padding:18px;border-radius:16px;background:white;border:1px solid #dce4ee;box-shadow:0 8px 24px #182b4812}.card strong{display:block;font-size:2rem;margin-top:8px}.panel{margin-top:16px}input,button{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid #cdd8e5}button{background:#1d65d8;color:white;border:0;cursor:pointer}table{width:100%;border-collapse:collapse;margin-top:12px}td,th{text-align:left;padding:10px;border-bottom:1px solid #e7edf4;font-size:.9rem}@media(max-width:650px){.grid{grid-template-columns:repeat(2,1fr)}header{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+<main>
+  <header><div><h1>JOL Админ-панель</h1><p>Пользователи, заказы и справочник мест</p></div><div><input id="key" type="password" placeholder="ADMIN_KEY" /><button id="load">Загрузить</button></div></header>
+  <section id="stats" class="grid"></section>
+  <section class="panel"><h2>Заказы</h2><div id="orders">Введите ключ администратора</div></section>
+</main>
+<script>
+const key=()=>document.querySelector('#key').value;
+async function load(){const headers={'x-admin-key':key()};const summary=await fetch('/api/admin/summary',{headers});if(!summary.ok){document.querySelector('#orders').textContent='Неверный ключ или ADMIN_KEY не настроен';return}const data=await summary.json();document.querySelector('#stats').innerHTML=Object.entries({Пользователи:data.users,Заказы:data.orders,'Открытые заказы':data.openOrders,'Города и сёла':data.locations}).map(([label,value])=>`<div class="card"><span>${label}</span><strong>${value}</strong></div>`).join('');const orders=await (await fetch('/api/admin/orders',{headers})).json();document.querySelector('#orders').innerHTML=`<table><tr><th>Маршрут</th><th>Цена</th><th>Статус</th><th>Дата</th></tr>${orders.orders.map(order=>`<tr><td>${order.from} → ${order.to}</td><td>${Number(order.price).toLocaleString('ru-RU')} ₸</td><td>${order.status}</td><td>${new Date(order.createdAt).toLocaleString('ru-RU')}</td></tr>`).join('')}</table>`}document.querySelector('#load').addEventListener('click',load);
+</script>
+</body>
+</html>
