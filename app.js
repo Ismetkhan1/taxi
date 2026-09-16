@@ -278,6 +278,22 @@ async function updateOrderStatus(orderId, status) {
   }
 }
 
+async function renderActiveRide(orders) {
+  const panel = getElement('#activeRidePanel');
+  if (!panel || !user) return;
+  const active = orders.find((order) => [order.passengerId, order.userId].includes(user.id) && ['open', 'accepted', 'in_progress'].includes(order.status));
+  if (!active) {
+    panel.classList.add('hidden');
+    panel.innerHTML = '';
+    return;
+  }
+
+  panel.classList.remove('hidden');
+  panel.innerHTML = `<div class="active-ride-top"><div><p class="eyebrow">ТЕКУЩАЯ ПОЕЗДКА</p><h3>${statusLabels[active.status] || active.status}</h3></div><span class="status-pill">${active.status === 'open' ? 'Ищем водителя' : 'В работе'}</span></div><div class="active-route"><b>${active.from}</b><span>→</span><b>${active.to}</b></div><div class="active-ride-meta"><span>${Number(active.price).toLocaleString('ru-RU')} ₸</span><span>${active.seats} ${active.seats === 1 ? 'место' : 'места'}</span><span>${active.when}</span></div><div class="active-ride-actions"><button class="mini-button map-button" id="activeRideMap" type="button">Открыть маршрут</button><button class="mini-button danger" id="cancelActiveRide" type="button">Отменить</button></div>`;
+  getElement('#activeRideMap')?.addEventListener('click', () => openMapForOrder(active));
+  getElement('#cancelActiveRide')?.addEventListener('click', () => updateOrderStatus(active.id, 'cancelled'));
+}
+
 function getOrderParticipant(order) {
   return user?.id === (order.passengerId || order.userId) ? order.driverId : (order.passengerId || order.userId);
 }
@@ -501,6 +517,8 @@ async function renderRidesHistory() {
   } catch (error) {
     showToast(error.message || 'Не удалось загрузить поездки');
   }
+
+  await renderActiveRide(myOrders);
 
   if (!myOrders.length) {
     list.innerHTML = '<div class="ride-history-item"><div><b>Пока нет поездок</b><small>Когда появятся маршруты, они отобразятся здесь</small></div></div>';

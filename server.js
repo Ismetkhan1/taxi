@@ -404,6 +404,7 @@ function createServer() {
         if (!canUpdate) return send(res, 403, { error: 'Нет доступа к поездке' });
 
         const transitions = {
+          open: ['cancelled'],
           accepted: ['in_progress', 'cancelled'],
           in_progress: ['completed', 'cancelled'],
           completed: [],
