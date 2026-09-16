@@ -11,15 +11,17 @@ if (-not $remote) {
 }
 
 $status = git status --short
-if (-not $status) {
-  Write-Host 'No changes to publish.' -ForegroundColor Yellow
-  exit 0
+if ($status) {
+  $message = "Update JOL $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+  git add app.js server.js index.html styles.css data.json locations.json admin.html package.json package-lock.json README.md .gitignore publish.ps1
+  git commit -m $message
+} else {
+  Write-Host 'No new file changes. Trying to push existing commits.' -ForegroundColor Yellow
 }
-
-$message = "Update JOL $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
-git add app.js server.js index.html styles.css data.json locations.json admin.html package.json package-lock.json README.md .gitignore publish.ps1
-git commit -m $message
 
 git branch -M main
 git push -u origin main
+if ($LASTEXITCODE -ne 0) {
+  throw 'GitHub push failed. Check your internet connection and run npm run publish again.'
+}
 Write-Host 'Done: changes pushed to GitHub. Render will deploy automatically.' -ForegroundColor Green
