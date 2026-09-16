@@ -13,7 +13,7 @@ if (-not $remote) {
 $status = git status --short
 if ($status) {
   $message = "Update JOL $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
-  git add app.js server.js index.html styles.css data.json locations.json admin.html package.json package-lock.json README.md .gitignore publish.ps1
+  git add app.js server.js index.html styles.css data.json locations.json admin.html package.json package-lock.json README.md .gitignore .env.example publish.ps1
   git commit -m $message
 } else {
   Write-Host 'No new file changes. Trying to push existing commits.' -ForegroundColor Yellow
