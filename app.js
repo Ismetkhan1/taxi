@@ -1,5 +1,6 @@
 ﻿const $ = (selector) => document.querySelector(selector);
 const getElement = (...selectors) => selectors.map((selector) => document.querySelector(selector)).find(Boolean) || null;
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
 const routeStops = ['Алтай', 'Улькен Нарын', 'Катон-Карагай', 'Жана-Ульга', 'Шынгыстай', 'Урыль', 'Жамбыл', 'Берель', 'Аршаты'];
 const locationOptions = ['Усть-Каменогорск', ...routeStops, 'Риддер', 'Зайсан', 'Курчум', 'Маралды', 'Рахмановские Ключи'];
 const locationTypeLabels = { city: 'Город', village: 'Село' };
@@ -38,6 +39,7 @@ let activeLocationInput = null;
 let driverOnline = true;
 let routeEstimateRequest = 0;
 let notificationSnapshot = '';
+let locationRequestId = 0;
 
 function ensureStorage() {
   if (!localStorage.getItem('jol-state')) {
@@ -291,7 +293,7 @@ async function renderActiveRide(orders) {
   }
 
   panel.classList.remove('hidden');
-  panel.innerHTML = `<div class="active-ride-top"><div><p class="eyebrow">ТЕКУЩАЯ ПОЕЗДКА</p><h3>${statusLabels[active.status] || active.status}</h3></div><span class="status-pill">${active.status === 'open' ? 'Ищем водителя' : 'В работе'}</span></div><div class="active-route"><b>${active.from}</b><span>→</span><b>${active.to}</b></div><div class="active-ride-meta"><span>${Number(active.price).toLocaleString('ru-RU')} ₸</span><span>${active.seats} ${active.seats === 1 ? 'место' : 'места'}</span><span>${active.when}</span></div><div class="active-ride-actions"><button class="mini-button map-button" id="activeRideMap" type="button">Открыть маршрут</button><button class="mini-button danger" id="cancelActiveRide" type="button">Отменить</button></div>`;
+  panel.innerHTML = `<div class="active-ride-top"><div><p class="eyebrow">ТЕКУЩАЯ ПОЕЗДКА</p><h3>${escapeHtml(statusLabels[active.status] || active.status)}</h3></div><span class="status-pill">${active.status === 'open' ? 'Ищем водителя' : 'В работе'}</span></div><div class="active-route"><b>${escapeHtml(active.from)}</b><span>→</span><b>${escapeHtml(active.to)}</b></div><div class="active-ride-meta"><span>${Number(active.price).toLocaleString('ru-RU')} ₸</span><span>${active.seats} ${active.seats === 1 ? 'место' : 'места'}</span><span>${escapeHtml(active.when)}</span></div><div class="active-ride-actions"><button class="mini-button map-button" id="activeRideMap" type="button">Открыть маршрут</button><button class="mini-button danger" id="cancelActiveRide" type="button">Отменить</button></div>`;
   getElement('#activeRideMap')?.addEventListener('click', () => openMapForOrder(active));
   getElement('#cancelActiveRide')?.addEventListener('click', () => updateOrderStatus(active.id, 'cancelled'));
 }
@@ -305,7 +307,7 @@ async function loadMessages(orderId) {
   if (!list || !orderId || !user) return;
   try {
     const data = await api(`/messages?orderId=${encodeURIComponent(orderId)}&userId=${encodeURIComponent(user.id)}`);
-    list.innerHTML = data.messages?.length ? data.messages.map((message) => `<div class="message-bubble ${message.senderId === user.id ? 'mine' : ''}">${message.text}<small>${new Date(message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</small></div>`).join('') : '<div class="empty-state">Сообщений пока нет</div>';
+    list.innerHTML = data.messages?.length ? data.messages.map((message) => `<div class="message-bubble ${message.senderId === user.id ? 'mine' : ''}">${escapeHtml(message.text)}<small>${escapeHtml(new Date(message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }))}</small></div>`).join('') : '<div class="empty-state">Сообщений пока нет</div>';
     list.scrollTop = list.scrollHeight;
   } catch (error) {
     showToast(error.message || 'Не удалось загрузить чат');
@@ -318,7 +320,7 @@ async function loadMessageOrders() {
   try {
     const data = await api('/orders');
     const orders = (data.orders || []).filter((order) => [order.passengerId, order.userId, order.driverId].includes(user.id) && order.driverId);
-    select.innerHTML = orders.length ? orders.map((order) => `<option value="${order.id}">${order.from} → ${order.to} · ${statusLabels[order.status] || order.status}</option>`).join('') : '<option value="">Нет доступных чатов</option>';
+    select.innerHTML = orders.length ? orders.map((order) => `<option value="${escapeHtml(order.id)}">${escapeHtml(order.from)} → ${escapeHtml(order.to)} · ${escapeHtml(statusLabels[order.status] || order.status)}</option>`).join('') : '<option value="">Нет доступных чатов</option>';
     await loadMessages(select.value);
   } catch (error) {
     showToast(error.message || 'Не удалось загрузить поездки');
@@ -482,6 +484,7 @@ async function showLocationMenu(input, filter = false) {
   activeLocationInput = input;
   const menu = getElement('#locationMenu');
   if (!menu) return;
+  const requestId = ++locationRequestId;
   const query = input.value.trim().toLowerCase();
   let locations = locationOptions.map((name) => ({
     name,
@@ -495,7 +498,9 @@ async function showLocationMenu(input, filter = false) {
     locations = locations.filter((location) => !filter || location.name.toLowerCase().includes(query) || query.length < 2);
   }
 
-  menu.innerHTML = `<p>Выберите город или село</p>${locations.map((location) => `<button type="button" role="option"><span>${location.name}</span><small>${locationTypeLabels[location.type] || 'Место'}</small></button>`).join('')}`;
+  if (requestId !== locationRequestId || activeLocationInput !== input) return;
+
+  menu.innerHTML = `<p>Выберите город или село</p>${locations.map((location) => `<button type="button" role="option"><span>${escapeHtml(location.name)}</span><small>${escapeHtml(locationTypeLabels[location.type] || 'Место')}</small></button>`).join('')}`;
   menu.querySelectorAll('button').forEach((button) => {
     button.addEventListener('click', () => {
       const selectedName = button.querySelector('span')?.textContent || button.textContent;
@@ -530,8 +535,8 @@ async function renderRidesHistory() {
     list.innerHTML = myOrders.slice(0, 8).map((order) => `
     <div class="ride-history-item">
       <div>
-        <b>${order.from} → ${order.to}</b>
-        <small>${order.when} · ${statusLabels[order.status] || order.status}</small>
+        <b>${escapeHtml(order.from)} → ${escapeHtml(order.to)}</b>
+        <small>${escapeHtml(order.when)} · ${escapeHtml(statusLabels[order.status] || order.status)}</small>
       </div>
       <div class="ride-actions">
         <span class="status-pill">${statusLabels[order.status] || order.status}</span>

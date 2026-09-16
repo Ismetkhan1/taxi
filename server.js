@@ -11,6 +11,7 @@ const uploadsPath = path.join(root, 'uploads');
 const adminKey = process.env.ADMIN_KEY || '';
 let databaseCache = null;
 let databasePool = null;
+let persistenceQueue = Promise.resolve();
 const locationCoordinates = {
   'Усть-Каменогорск': [49.9483, 82.6275],
   'Алтай': [50.3004, 83.5146],
@@ -75,7 +76,8 @@ async function persistDatabase(data) {
 
 function writeDb(data) {
   databaseCache = data;
-  persistDatabase(data).catch((error) => console.error(`Не удалось сохранить базу: ${error.message}`));
+  persistenceQueue = persistenceQueue.then(() => persistDatabase(data));
+  return persistenceQueue;
 }
 
 async function initializeDatabase() {
@@ -133,7 +135,16 @@ function send(res, status, data) {
 function body(req) {
   return new Promise((resolve, reject) => {
     let raw = '';
-    req.on('data', (chunk) => { raw += chunk; });
+    let size = 0;
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > 2 * 1024 * 1024) {
+        reject(new Error('Размер запроса слишком большой'));
+        req.destroy();
+        return;
+      }
+      raw += chunk;
+    });
     req.on('end', () => {
       try {
         resolve(raw ? JSON.parse(raw) : {});
@@ -172,7 +183,7 @@ function createServer() {
           user.role = role;
         }
 
-        writeDb(db);
+        await writeDb(db);
         return send(res, 200, { user });
       }
 
@@ -200,6 +211,9 @@ function createServer() {
         const db = readDb();
         const orderId = url.searchParams.get('orderId');
         const userId = url.searchParams.get('userId');
+        const order = db.orders.find((item) => item.id === orderId);
+        const canRead = order && userId && [order.passengerId, order.userId, order.driverId].includes(userId);
+        if (orderId && !canRead) return send(res, 403, { error: 'Нет доступа к чату' });
         const messages = (db.messages || []).filter((message) => {
           if (orderId && message.orderId !== orderId) return false;
           if (userId && message.senderId !== userId && message.recipientId !== userId) return false;
@@ -212,7 +226,7 @@ function createServer() {
         const { orderId, senderId, recipientId, text } = await body(req);
         const db = readDb();
         const order = db.orders.find((item) => item.id === orderId);
-        if (!order || !senderId || !recipientId || !text?.trim()) {
+        if (!order || !senderId || !recipientId || !text?.trim() || ![order.passengerId, order.userId, order.driverId].includes(recipientId)) {
           return send(res, 400, { error: 'Некорректное сообщение' });
         }
         if (![order.passengerId, order.userId, order.driverId].includes(senderId)) {
@@ -224,7 +238,7 @@ function createServer() {
           text: text.trim().slice(0, 1000), createdAt: new Date().toISOString()
         };
         db.messages.push(message);
-        writeDb(db);
+        await writeDb(db);
         return send(res, 201, { message });
       }
 
@@ -242,7 +256,8 @@ function createServer() {
         if (!order || order.status !== 'completed' || !fromUserId || !toUserId || !Number.isInteger(score) || score < 1 || score > 5) {
           return send(res, 400, { error: 'Оставить отзыв можно после завершения поездки' });
         }
-        if (![order.passengerId, order.userId, order.driverId].includes(fromUserId)) {
+        const passengerId = order.passengerId || order.userId;
+        if (![passengerId, order.driverId].includes(fromUserId) || ![passengerId, order.driverId].includes(toUserId) || fromUserId === toUserId) {
           return send(res, 403, { error: 'Нет доступа к отзыву' });
         }
         db.reviews = db.reviews || [];
@@ -251,7 +266,7 @@ function createServer() {
         }
         const review = { id: crypto.randomUUID(), orderId, fromUserId, toUserId, rating: score, text: (text || '').trim().slice(0, 500), createdAt: new Date().toISOString() };
         db.reviews.push(review);
-        writeDb(db);
+        await writeDb(db);
         return send(res, 201, { review });
       }
 
@@ -286,7 +301,7 @@ function createServer() {
         };
         user.vehicle.photo = saveDataUrl(photoDataUrl, 'vehicle');
         user.vehicle.document = saveDataUrl(documentDataUrl, 'document');
-        writeDb(db);
+        await writeDb(db);
         return send(res, 200, { user });
       }
 
@@ -331,7 +346,7 @@ function createServer() {
         }
 
         user.role = role;
-        writeDb(db);
+        await writeDb(db);
         return send(res, 200, { user });
       }
 
@@ -357,7 +372,7 @@ function createServer() {
         };
 
         db.orders.push(order);
-        writeDb(db);
+        await writeDb(db);
         return send(res, 201, { order });
       }
 
@@ -385,7 +400,7 @@ function createServer() {
         order.driverPrice = Number(driverPrice);
         order.offeredAt = new Date().toISOString();
         order.acceptedAt = order.offeredAt;
-        writeDb(db);
+        await writeDb(db);
         return send(res, 200, { order });
       }
 
@@ -395,12 +410,14 @@ function createServer() {
         const allowedStatuses = ['accepted', 'in_progress', 'completed', 'cancelled'];
         const db = readDb();
         const order = db.orders.find((item) => item.id === statusMatch[1]);
+        const actor = db.users.find((item) => item.id === userId);
 
         if (!order || !allowedStatuses.includes(status)) {
           return send(res, 400, { error: 'Некорректный статус поездки' });
         }
 
-        const canUpdate = userId && [order.passengerId, order.userId, order.driverId].includes(userId);
+        const passengerId = order.passengerId || order.userId;
+        const canUpdate = userId && actor && [passengerId, order.driverId].includes(userId);
         if (!canUpdate) return send(res, 403, { error: 'Нет доступа к поездке' });
 
         const transitions = {
@@ -413,15 +430,20 @@ function createServer() {
         if (!transitions[order.status]?.includes(status)) {
           return send(res, 409, { error: `Нельзя изменить статус с ${order.status} на ${status}` });
         }
+        if (status === 'in_progress' || status === 'completed') {
+          if (actor.role !== 'driver' || order.driverId !== userId) return send(res, 403, { error: 'Только водитель может менять этот статус' });
+        }
 
         order.status = status;
         order[`${status}At`] = new Date().toISOString();
-        writeDb(db);
+        await writeDb(db);
         return send(res, 200, { order });
       }
 
-      const filePath = path.join(root, url.pathname === '/' ? 'index.html' : url.pathname);
-      if (!filePath.startsWith(root) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+      const requestedPath = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, '');
+      const filePath = path.resolve(root, requestedPath);
+      const relativePath = path.relative(root, filePath);
+      if (relativePath.startsWith('..') || path.isAbsolute(relativePath) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
         res.writeHead(404);
         return res.end('Не найдено');
       }
