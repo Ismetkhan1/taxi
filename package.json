@@ -2,5 +2,6 @@
   "name": "jol-taxi",
   "version": "1.0.0",
   "private": true,
-  "scripts": { "start": "node server.js" }
+  "scripts": { "start": "node server.js", "db:check": "node -e \"console.log(process.env.DATABASE_URL ? 'DATABASE_URL is configured' : 'DATABASE_URL is not configured; using data.json')\"" },
+  "dependencies": { "pg": "^8.16.3" }
 }

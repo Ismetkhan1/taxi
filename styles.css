@@ -397,6 +397,8 @@ input, select {
 }
 .section-head h3 { margin: 0; font-size: 1.08rem; }
 .section-head span { font-size: 0.72rem; color: var(--muted); font-weight: 800; }
+.driver-filters { display: grid; gap: 8px; margin: 12px 0; }
+.driver-filters input, .driver-filters select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); color: var(--text); font-size: 0.84rem; }
 .order-card-driver {
   padding: 18px 16px;
   border-radius: 22px;
@@ -574,6 +576,24 @@ input, select {
   font-size: 0.68rem;
   font-weight: 700;
 }
+.message-order-select { width: 100%; min-height: 44px; margin-bottom: 12px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); color: var(--text); }
+.message-list { max-height: 360px; overflow-y: auto; }
+.message-bubble { max-width: 82%; margin: 4px 0; padding: 10px 12px; border-radius: 14px 14px 14px 4px; background: var(--panel-2); color: var(--text); font-size: 0.82rem; }
+.message-bubble.mine { margin-left: auto; border-radius: 14px 14px 4px 14px; background: var(--primary-soft); }
+.message-bubble small { display: block; margin-top: 5px; color: var(--muted); font-size: 0.62rem; }
+.message-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; }
+.message-form input { min-width: 0; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); color: var(--text); }
+.message-form .primary-button { min-height: 44px; padding: 0 14px; }
+.ride-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.ride-status-button { padding: 7px 10px; background: var(--primary-soft); color: var(--primary-strong); font-size: 0.68rem; }
+.map-button, .review-button { padding: 7px 10px; background: var(--panel-2); color: var(--text); font-size: 0.68rem; }
+.review-button { background: var(--warning-soft); color: #92400e; }
+.vehicle-card { display: grid; gap: 10px; margin-top: 16px; padding: 16px; border: 1px solid rgba(148,163,184,0.18); border-radius: 22px; background: rgba(255,255,255,0.9); }
+.vehicle-card h3 { margin: 0; font-size: 1rem; }
+.vehicle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.vehicle-grid input, .upload-field { min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); color: var(--text); font-size: 0.82rem; }
+.upload-field { display: grid; gap: 7px; color: var(--muted); }
+.upload-field input { min-width: 0; font-size: 0.75rem; }
 .profile-card { margin-bottom: 18px; }
 .profile-top {
   display: flex;

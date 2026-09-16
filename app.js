@@ -1,7 +1,8 @@
 ﻿const $ = (selector) => document.querySelector(selector);
 const getElement = (...selectors) => selectors.map((selector) => document.querySelector(selector)).find(Boolean) || null;
-const routeStops = ['город Алтай', 'Улькен Нарын', 'Катон-Карагай', 'Жана-Ульга', 'Шынгыстай', 'Урыль', 'Жамбыл', 'Берель', 'Аршаты'];
-const locationOptions = ['Усть-Каменогорск', ...routeStops, 'Маралды', 'Рахмановские Ключи'];
+const routeStops = ['Алтай', 'Улькен Нарын', 'Катон-Карагай', 'Жана-Ульга', 'Шынгыстай', 'Урыль', 'Жамбыл', 'Берель', 'Аршаты'];
+const locationOptions = ['Усть-Каменогорск', ...routeStops, 'Риддер', 'Зайсан', 'Курчум', 'Маралды', 'Рахмановские Ключи'];
+const locationTypeLabels = { city: 'Город', village: 'Село' };
 
 const seedState = {
   users: [],
@@ -35,6 +36,8 @@ let user = JSON.parse(localStorage.getItem('jol-user') || 'null');
 let passengerStop = '';
 let activeLocationInput = null;
 let driverOnline = true;
+let routeEstimateRequest = 0;
+let notificationSnapshot = '';
 
 function ensureStorage() {
   if (!localStorage.getItem('jol-state')) {
@@ -60,7 +63,60 @@ function showToast(message) {
   showToast.timer = setTimeout(() => toast.classList.remove('show'), 2600);
 }
 
+async function pollNotifications() {
+  if (!user) return;
+  try {
+    const data = await api('/orders');
+    const relevant = (data.orders || []).filter((order) => [order.passengerId, order.userId, order.driverId].includes(user.id));
+    const snapshot = relevant.map((order) => `${order.id}:${order.status}:${order.updatedAt || order.createdAt}`).join('|');
+    if (notificationSnapshot && snapshot !== notificationSnapshot) {
+      showToast('Обновились ваши поездки');
+      if ('Notification' in window && Notification.permission === 'granted') new Notification('JOL', { body: 'Обновился статус поездки' });
+    }
+    notificationSnapshot = snapshot;
+  } catch {
+    // Notifications are optional and should not interrupt the ride flow.
+  }
+}
+
+async function updateRouteEstimate() {
+  const fromInput = getElement('#from');
+  const toInput = getElement('#to');
+  const distanceLabel = getElement('#routeDistance');
+  const durationLabel = getElement('#routeDuration');
+  const priceHint = getElement('#routePriceHint');
+  const priceInput = getElement('#passengerPrice');
+  if (!fromInput || !toInput || !distanceLabel || !durationLabel || !priceHint) return;
+
+  const requestId = ++routeEstimateRequest;
+  try {
+    const data = await api(`/route?from=${encodeURIComponent(fromInput.value.trim())}&to=${encodeURIComponent(toInput.value.trim())}`);
+    if (requestId !== routeEstimateRequest) return;
+    const hours = Math.floor(data.durationMinutes / 60);
+    const minutes = data.durationMinutes % 60;
+    distanceLabel.textContent = `≈ ${data.distance} км`;
+    durationLabel.textContent = `${hours ? `${hours} ч ` : ''}${minutes} мин`;
+    priceHint.textContent = `Ориентировочная цена: ${data.priceRange.min.toLocaleString('ru-RU')}–${data.priceRange.max.toLocaleString('ru-RU')} ₸`;
+    if (priceInput && (!priceInput.value || priceInput.dataset.autoPrice === 'true')) {
+      priceInput.value = data.suggestedPrice;
+      priceInput.dataset.autoPrice = 'true';
+    }
+  } catch {
+    distanceLabel.textContent = 'Выберите маршрут';
+    durationLabel.textContent = 'Расчёт времени';
+    priceHint.textContent = 'Выберите город или село из списка';
+  }
+}
+
 function api(path, options = {}) {
+  if (typeof window !== 'undefined' && window.location.protocol.startsWith('http')) {
+    return fetch(`/api${path}`, options).then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Ошибка сервера');
+      return data;
+    });
+  }
+
   const state = getState();
   const payload = options.body ? JSON.parse(options.body) : {};
 
@@ -108,6 +164,16 @@ function api(path, options = {}) {
     state.orders.unshift(order);
     saveState(state);
     return Promise.resolve({ order });
+  }
+
+  if (path.startsWith('/locations')) {
+    const params = new URLSearchParams(path.split('?')[1] || '');
+    const query = (params.get('q') || '').toLowerCase();
+    const type = params.get('type');
+    const locations = locationOptions
+      .map((name) => ({ name, type: name === 'Усть-Каменогорск' || ['Алтай', 'Риддер', 'Зайсан'].includes(name) ? 'city' : 'village', region: 'Восточно-Казахстанская область' }))
+      .filter((location) => (!query || location.name.toLowerCase().includes(query)) && (!type || location.type === type));
+    return Promise.resolve({ locations });
   }
 
   if (path.includes('/accept') && options.method === 'POST') {
@@ -168,6 +234,109 @@ function renderProfile() {
   if (profileName) profileName.textContent = user.name;
   if (profilePhone) profilePhone.textContent = user.phone;
   if (profileRoleToggle) profileRoleToggle.textContent = user.role === 'driver' ? 'Пассажир' : 'Водитель';
+}
+
+const statusLabels = { open: 'Ищем водителя', accepted: 'Водитель найден', in_progress: 'В пути', completed: 'Завершена', cancelled: 'Отменена' };
+
+function openMapForOrder(order) {
+  const query = encodeURIComponent(`${order.from} до ${order.to}`);
+  window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(order.from)}&destination=${encodeURIComponent(order.to)}&travelmode=driving`, '_blank', 'noopener');
+}
+
+async function submitReview(orderId, toUserId, rating, text) {
+  try {
+    await api('/reviews', { method: 'POST', body: JSON.stringify({ orderId, fromUserId: user.id, toUserId, rating, text }) });
+    showToast('Спасибо за отзыв');
+    await renderRidesHistory();
+  } catch (error) {
+    showToast(error.message || 'Не удалось сохранить отзыв');
+  }
+}
+
+async function updateOrderStatus(orderId, status) {
+  try {
+    await api(`/orders/${orderId}/status`, { method: 'POST', body: JSON.stringify({ status, userId: user.id }) });
+    showToast(`Статус: ${statusLabels[status]}`);
+    await renderRidesHistory();
+  } catch (error) {
+    showToast(error.message || 'Не удалось изменить статус');
+  }
+}
+
+function getOrderParticipant(order) {
+  return user?.id === (order.passengerId || order.userId) ? order.driverId : (order.passengerId || order.userId);
+}
+
+async function loadMessages(orderId) {
+  const list = getElement('#messageList');
+  if (!list || !orderId || !user) return;
+  try {
+    const data = await api(`/messages?orderId=${encodeURIComponent(orderId)}&userId=${encodeURIComponent(user.id)}`);
+    list.innerHTML = data.messages?.length ? data.messages.map((message) => `<div class="message-bubble ${message.senderId === user.id ? 'mine' : ''}">${message.text}<small>${new Date(message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</small></div>`).join('') : '<div class="empty-state">Сообщений пока нет</div>';
+    list.scrollTop = list.scrollHeight;
+  } catch (error) {
+    showToast(error.message || 'Не удалось загрузить чат');
+  }
+}
+
+async function loadMessageOrders() {
+  const select = getElement('#messageOrderSelect');
+  if (!select || !user) return;
+  try {
+    const data = await api('/orders');
+    const orders = (data.orders || []).filter((order) => [order.passengerId, order.userId, order.driverId].includes(user.id) && order.driverId);
+    select.innerHTML = orders.length ? orders.map((order) => `<option value="${order.id}">${order.from} → ${order.to} · ${statusLabels[order.status] || order.status}</option>`).join('') : '<option value="">Нет доступных чатов</option>';
+    await loadMessages(select.value);
+  } catch (error) {
+    showToast(error.message || 'Не удалось загрузить поездки');
+  }
+}
+
+async function handleMessageSubmit(event) {
+  event.preventDefault();
+  const select = getElement('#messageOrderSelect');
+  const input = getElement('#messageText');
+  const orderId = select?.value;
+  if (!orderId || !input?.value.trim()) return;
+  try {
+    const orders = await api('/orders');
+    const order = (orders.orders || []).find((item) => item.id === orderId);
+    const recipientId = getOrderParticipant(order || {});
+    await api('/messages', { method: 'POST', body: JSON.stringify({ orderId, senderId: user.id, recipientId, text: input.value }) });
+    input.value = '';
+    await loadMessages(orderId);
+  } catch (error) {
+    showToast(error.message || 'Не удалось отправить сообщение');
+  }
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve) => {
+    if (!file) return resolve(null);
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleVehicleSubmit(event) {
+  event.preventDefault();
+  if (!user) return;
+  const value = (selector) => getElement(selector)?.value.trim() || '';
+  try {
+    await api(`/users/${user.id}/vehicle`, {
+      method: 'POST',
+      body: JSON.stringify({
+        vehicle: { brand: value('#vehicleBrand'), model: value('#vehicleModel'), plate: value('#vehiclePlate'), color: value('#vehicleColor') },
+        photoDataUrl: await readFileAsDataUrl(getElement('#vehiclePhoto')?.files[0]),
+        documentDataUrl: await readFileAsDataUrl(getElement('#vehicleDocument')?.files[0])
+      })
+    });
+    showToast('Данные автомобиля сохранены');
+  } catch (error) {
+    showToast(error.message || 'Не удалось сохранить автомобиль');
+  }
 }
 
 function ensureScreens() {
@@ -275,19 +444,30 @@ function placePassengerStops() {
   destination.parentElement.insertBefore(picker, destination.nextElementSibling);
 }
 
-function showLocationMenu(input, filter = false) {
+async function showLocationMenu(input, filter = false) {
   if (!input || !input.value) return;
   activeLocationInput = input;
   const menu = getElement('#locationMenu');
   if (!menu) return;
   const query = input.value.trim().toLowerCase();
-  const matches = locationOptions.filter((item) => !filter || item.toLowerCase().includes(query) || query.length < 2);
+  let locations = locationOptions.map((name) => ({
+    name,
+    type: name === 'Усть-Каменогорск' || ['Алтай', 'Риддер', 'Зайсан'].includes(name) ? 'city' : 'village'
+  }));
 
-  menu.innerHTML = `<p>Выберите город или село</p>${matches.map((item) => `<button type="button" role="option">${item}</button>`).join('')}`;
+  try {
+    const data = await api(`/locations?q=${encodeURIComponent(filter ? query : '')}`);
+    if (data.locations?.length) locations = data.locations;
+  } catch {
+    locations = locations.filter((location) => !filter || location.name.toLowerCase().includes(query) || query.length < 2);
+  }
+
+  menu.innerHTML = `<p>Выберите город или село</p>${locations.map((location) => `<button type="button" role="option"><span>${location.name}</span><small>${locationTypeLabels[location.type] || 'Место'}</small></button>`).join('')}`;
   menu.querySelectorAll('button').forEach((button) => {
     button.addEventListener('click', () => {
-      activeLocationInput.value = button.textContent;
-      if (activeLocationInput.id === 'to') passengerStop = button.textContent;
+      const selectedName = button.querySelector('span')?.textContent || button.textContent;
+      activeLocationInput.value = selectedName;
+      if (activeLocationInput.id === 'to') passengerStop = selectedName;
       menu.classList.add('hidden');
       activeLocationInput.focus();
     });
@@ -295,31 +475,70 @@ function showLocationMenu(input, filter = false) {
   menu.classList.remove('hidden');
 }
 
-function renderRidesHistory() {
+async function renderRidesHistory() {
   const list = getElement('#ridesList');
   if (!list) return;
-  const state = getState();
-  const myOrders = state.orders.filter((order) => order.userId === user?.id);
+
+  let myOrders = [];
+  try {
+    const data = await api('/orders');
+    myOrders = (data.orders || []).filter((order) => order.userId === user?.id || order.passengerId === user?.id || order.driverId === user?.id);
+  } catch (error) {
+    showToast(error.message || 'Не удалось загрузить поездки');
+  }
 
   if (!myOrders.length) {
     list.innerHTML = '<div class="ride-history-item"><div><b>Пока нет поездок</b><small>Когда появятся маршруты, они отобразятся здесь</small></div></div>';
     return;
   }
 
-  list.innerHTML = myOrders.slice(0, 4).map((order) => `
+    list.innerHTML = myOrders.slice(0, 8).map((order) => `
     <div class="ride-history-item">
       <div>
         <b>${order.from} → ${order.to}</b>
-        <small>${order.when}</small>
+        <small>${order.when} · ${statusLabels[order.status] || order.status}</small>
       </div>
-      <span class="status-pill">${order.status === 'accepted' ? 'Принят' : 'Открыт'}</span>
+      <div class="ride-actions">
+        <span class="status-pill">${statusLabels[order.status] || order.status}</span>
+        ${order.status === 'accepted' && order.driverId === user.id ? `<button class="mini-button ride-status-button" data-order-id="${order.id}" data-next-status="in_progress" type="button">Начать</button>` : ''}
+        ${order.status === 'in_progress' && order.driverId === user.id ? `<button class="mini-button ride-status-button" data-order-id="${order.id}" data-next-status="completed" type="button">Завершить</button>` : ''}
+        ${order.status !== 'open' ? `<button class="mini-button map-button" data-order-id="${order.id}" type="button">Карта</button>` : ''}
+        ${order.status === 'completed' ? `<button class="mini-button review-button" data-order-id="${order.id}" data-to-user="${user.id === order.driverId ? (order.passengerId || order.userId) : order.driverId}" type="button">Оценить</button>` : ''}
+      </div>
     </div>
   `).join('');
+
+  list.querySelectorAll('.ride-status-button').forEach((button) => button.addEventListener('click', () => updateOrderStatus(button.dataset.orderId, button.dataset.nextStatus)));
+  list.querySelectorAll('.map-button').forEach((button) => button.addEventListener('click', () => {
+    const order = myOrders.find((item) => item.id === button.dataset.orderId);
+    if (order) openMapForOrder(order);
+  }));
+  list.querySelectorAll('.review-button').forEach((button) => button.addEventListener('click', async () => {
+    const rating = Number(window.prompt('Оценка от 1 до 5', '5'));
+    if (!rating) return;
+    const text = window.prompt('Комментарий (необязательно)', '') || '';
+    await submitReview(button.dataset.orderId, button.dataset.toUser, rating, text);
+  }));
 }
 
-function loadDriverOrders() {
-  const state = getState();
-  const openOrders = state.orders.filter((order) => order.status === 'open');
+async function loadDriverOrders() {
+  let openOrders = [];
+  try {
+    const routeFilter = getElement('#driverRouteFilter');
+    const seatsFilter = getElement('#driverSeatsFilter');
+    const priceFilter = getElement('#driverPriceFilter');
+    const params = new URLSearchParams({ status: 'open' });
+    if (routeFilter?.value.trim()) {
+      params.set('from', routeFilter.value.trim());
+      params.set('to', routeFilter.value.trim());
+    }
+    if (seatsFilter?.value) params.set('seats', seatsFilter.value);
+    if (priceFilter?.value) params.set('minPrice', priceFilter.value);
+    const data = await api(`/orders?${params.toString()}`);
+    openOrders = data.orders || [];
+  } catch (error) {
+    showToast(error.message || 'Не удалось загрузить заказы');
+  }
   const ordersCount = getElement('#ordersCount');
   const availableOrder = getElement('#availableOrder');
   const emptyOrders = getElement('#emptyOrders');
@@ -487,6 +706,7 @@ function bindEvents() {
   const doneButton = getElement('#doneButton');
   const profileRoleToggle = getElement('#profileRoleToggle');
   const onlineToggle = getElement('#onlineToggle', '.online-toggle');
+  const driverFilters = getElement('#driverFilters');
 
   if (authForm) authForm.addEventListener('submit', handleLogin);
   if (roleToggle) roleToggle.addEventListener('click', handleSwitchRole);
@@ -503,8 +723,15 @@ function bindEvents() {
   });
 
   document.querySelectorAll('.nav-item').forEach((button) => {
-    button.addEventListener('click', () => switchTab(button.dataset.tab));
+    button.addEventListener('click', () => {
+      switchTab(button.dataset.tab);
+      if (button.dataset.tab === 'messages') loadMessageOrders();
+    });
   });
+
+  getElement('#messageForm')?.addEventListener('submit', handleMessageSubmit);
+  getElement('#messageOrderSelect')?.addEventListener('change', (event) => loadMessages(event.target.value));
+  getElement('#vehicleForm')?.addEventListener('submit', handleVehicleSubmit);
 
   if (orderForm) orderForm.addEventListener('submit', handleCreateOrder);
   if (showStopsButton) showStopsButton.addEventListener('click', () => showLocationMenu(getElement('#to')));
@@ -518,6 +745,10 @@ function bindEvents() {
     }
   });
   if (acceptOrderButton) acceptOrderButton.addEventListener('click', handleAcceptOrder);
+  driverFilters?.querySelectorAll('input, select').forEach((input) => {
+    input.addEventListener('input', () => loadDriverOrders());
+    input.addEventListener('change', () => loadDriverOrders());
+  });
   if (closeModalButton) closeModalButton.addEventListener('click', () => {
     const offerModal = getElement('#offerModal');
     if (offerModal) offerModal.classList.add('hidden');
@@ -539,6 +770,7 @@ function bindEvents() {
     button.addEventListener('click', () => {
       const active = button.classList.toggle('active');
       button.textContent = active ? 'Вкл' : 'Выкл';
+      if (button.dataset.setting === 'notifications' && active && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission();
     });
   });
 
@@ -547,7 +779,12 @@ function bindEvents() {
     if (!input) return;
     input.addEventListener('focus', () => showLocationMenu(input));
     input.addEventListener('input', () => showLocationMenu(input, true));
+    input.addEventListener('change', updateRouteEstimate);
+    input.addEventListener('blur', updateRouteEstimate);
   });
+
+  const priceInput = getElement('#passengerPrice');
+  priceInput?.addEventListener('input', () => { priceInput.dataset.autoPrice = 'false'; });
 
   document.addEventListener('click', (event) => {
     const menu = getElement('#locationMenu');
@@ -564,6 +801,7 @@ function init() {
   bindEvents();
   renderStops();
   placePassengerStops();
+  updateRouteEstimate();
 
   const authModal = getElement('#authModal', '#authOverlay');
 
@@ -572,6 +810,7 @@ function init() {
     renderProfile();
     renderHomeRole();
     renderRidesHistory();
+    loadMessageOrders();
     if (user.role === 'driver') loadDriverOrders();
   } else {
     if (authModal) authModal.classList.remove('hidden');
@@ -579,6 +818,8 @@ function init() {
 
   renderRoleToggle();
   switchTab('home');
+  pollNotifications();
+  window.setInterval(pollNotifications, 15000);
 }
 
 init();

@@ -1,0 +1,92 @@
+[
+  {
+    "name": "Усть-Каменогорск",
+    "type": "city",
+    "region": "Восточно-Казахстанская область",
+    "popular": true
+  },
+  {
+    "name": "Алтай",
+    "type": "city",
+    "region": "Восточно-Казахстанская область",
+    "popular": true
+  },
+  {
+    "name": "Риддер",
+    "type": "city",
+    "region": "Восточно-Казахстанская область",
+    "popular": true
+  },
+  {
+    "name": "Зайсан",
+    "type": "city",
+    "region": "Восточно-Казахстанская область",
+    "popular": true
+  },
+  {
+    "name": "Курчум",
+    "type": "village",
+    "region": "Курчумский район",
+    "popular": true
+  },
+  {
+    "name": "Улькен Нарын",
+    "type": "village",
+    "region": "Катон-Карагайский район",
+    "popular": true
+  },
+  {
+    "name": "Катон-Карагай",
+    "type": "village",
+    "region": "Катон-Карагайский район",
+    "popular": true
+  },
+  {
+    "name": "Урыль",
+    "type": "village",
+    "region": "Катон-Карагайский район",
+    "popular": true
+  },
+  {
+    "name": "Берель",
+    "type": "village",
+    "region": "Катон-Карагайский район",
+    "popular": true
+  },
+  {
+    "name": "Жана-Ульга",
+    "type": "village",
+    "region": "Катон-Карагайский район",
+    "popular": false
+  },
+  {
+    "name": "Шынгыстай",
+    "type": "village",
+    "region": "Катон-Карагайский район",
+    "popular": false
+  },
+  {
+    "name": "Жамбыл",
+    "type": "village",
+    "region": "Катон-Карагайский район",
+    "popular": false
+  },
+  {
+    "name": "Аршаты",
+    "type": "village",
+    "region": "Катон-Карагайский район",
+    "popular": false
+  },
+  {
+    "name": "Маралды",
+    "type": "village",
+    "region": "Уланский район",
+    "popular": false
+  },
+  {
+    "name": "Рахмановские Ключи",
+    "type": "village",
+    "region": "Катон-Карагайский район",
+    "popular": true
+  }
+]
