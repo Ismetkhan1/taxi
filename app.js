@@ -254,8 +254,10 @@ function renderProfile() {
 const statusLabels = { open: 'Ищем водителя', accepted: 'Водитель найден', in_progress: 'В пути', completed: 'Завершена', cancelled: 'Отменена' };
 
 function openMapForOrder(order) {
-  const query = encodeURIComponent(`${order.from} до ${order.to}`);
-  window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(order.from)}&destination=${encodeURIComponent(order.to)}&travelmode=driving`, '_blank', 'noopener');
+  const destination = encodeURIComponent(order.to);
+  const origin = encodeURIComponent(order.from);
+  const routeUrl = `https://2gis.kz/routeSearch/rsType/car/from/${origin}/to/${destination}`;
+  window.open(routeUrl, '_blank', 'noopener');
 }
 
 async function submitReview(orderId, toUserId, rating, text) {
